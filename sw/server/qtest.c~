@@ -1,0 +1,33 @@
+#include <stdio.h>
+#include "circ_queue.h"
+
+struct circ_queue * reque;
+
+int main()
+{
+  int i;
+  int rtn;
+  int val;
+
+  reque = init_circ_queue(100);
+
+  for(i=0;i<100;i++)
+  {
+    rtn = push_circ_queue(reque,i+10);
+    if(rtn == 1)
+        printf("q is full\n");
+  }
+
+
+  for(i=0;i<100;i++)
+  {
+    rtn = pop_circ_queue(reque,&val);
+    if(rtn == 1)
+        printf("q is empty\n");
+    else
+        printf("value is %d\n",*val);
+  }
+
+  return 0;
+
+}
