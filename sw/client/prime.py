@@ -6,25 +6,24 @@ import wx
 import os
 import shutil
 from wx import html
-import pktgen
 
 class PrestoFrame(wx.Frame):
     def __init__(self,parent):
         self.title = "PRime"
-        wx.Frame.__init__(self,parent,-1,self.title,wx.DefaultPosition,size=(592,588),style= wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.MINIMIZE_BOX)
-        self.tool_pane = wx.Panel(self,-1,(0,50),(80,512),style= wx.TAB_TRAVERSAL|wx.NO_BORDER)
-        self.image_pane = wx.Panel(self,-1,(80,50),(512,512),style= wx.TAB_TRAVERSAL|wx.NO_BORDER)
+        wx.Frame.__init__(self,parent,-1,self.title,wx.DefaultPosition,size=(560,630),style= wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.MINIMIZE_BOX)
+        self.tool_pane = wx.Panel(self,-1,(0,45),(40,512),style= wx.TAB_TRAVERSAL|wx.NO_BORDER)
+        self.image_pane = wx.Panel(self,-1,(40,45),(512,512),style= wx.TAB_TRAVERSAL|wx.NO_BORDER)
         self.tool_pane.SetBackgroundColour("gray")
         self.image_pane.SetBackgroundColour("white")
         self.initStatusBar()
         self.createMenuBar()
         self.createToolBar()
         self.Bind(wx.EVT_CLOSE,self.OnCloseWindow)
-        text = wx.StaticText(self.tool_pane,-1,"FILTERS",(10,20),(50,20))
+        text = wx.StaticText(self.tool_pane,-1,"FILT",(0,20),(50,20))
         self.createToolBox()
-        self.State = "0"
+        self.State = 0
         self.in_filename = None
-        self.filt_filename = 'C/filt_image.bmp'
+        self.filt_filename = 'filt_image.bmp'
         self.Show(True)      
 
     def initStatusBar(self):
@@ -93,30 +92,26 @@ class PrestoFrame(wx.Frame):
         if dlg.ShowModal() == wx.ID_OK:
             filename = dlg.GetPath()
         if filename:
-            shutil.copyfile(self.filt_filename,tmpfile)
             try:
                 with open(filename):
                     os.remove(filename)
             except:
                 pass
-            shutil.copyfile(self.filt_filename,filename) #need to change here.
-            os.remove(tmpfile)
+            shutil.copyfile("receivedata.bmp",filename) #need to change here.
             self.in_filename = filename
-            self.State = "1"
+            self.State = 1
             dlg.Destroy()
 
 
     def OnSave(self,event):
         if self.State == 1:
             filename = self.in_filename
-        if filename:
-            try:
-                with open(filename):
-                    os.remove(filename)
-            except:
-                pass
-            shutil.copyfile(self.filt_filename,filename) #need to change here.
-            self.in_filename = filename
+            if filename:
+                try:
+                    with open(filename):
+                        shutil.copyfile(self.filt_filename,filename) #need to change here.
+                except:
+                    self.OnSaveAs(event)  
         else:
             self.OnSaveAs(event)
 
@@ -129,7 +124,7 @@ class PrestoFrame(wx.Frame):
         qtool = self.toolbar.AddLabelTool(wx.ID_ANY, 'Quit', wx.Bitmap('icons/exit.png'),wx.NullBitmap, wx.ITEM_NORMAL,"", "Quit" )
         self.toolbar.Realize()
         self.Bind(wx.EVT_TOOL, self.OnOpen, ftool)
-        self.Bind(wx.EVT_TOOL, self.OnSaveAs, stool)
+        self.Bind(wx.EVT_TOOL, self.OnSave, stool)
         self.Bind(wx.EVT_TOOL, self.OnAbout, itool)
         self.Bind(wx.EVT_TOOL, self.OnCloseWindow, qtool)
 
@@ -144,31 +139,39 @@ class PrestoFrame(wx.Frame):
                 os.remove(self.filt_filename)
         except:
             pass
-        os.system('start capture.bat &')
-        pktgen.eth_pkt_gen(self.in_filename,"lena.pcap")
-        pktgen.eth_pkt_gen('bitstreams/'+filt_name+'.bin',"config.pcap")
-        os.system('bittwist -i 2 req.pcap')
-        os.system('bittwist -i 2 config.pcap')
-        os.system('bittwist -i 2 bs_done.pcap')
-        os.system('bittwist -i 2 lena.pcap')
-        os.system('bittwist -i 2 data_done.pcap')
-        os.system('bittwist -i 2 data_req.pcap')
-        while 1:
-            if os.path.exists('lock') == False:
-                pktgen.eth_pack_decode("receivedata.pcap","filtered.bmp")
-                break                  
-        img = wx.Image("filtered.bmp", wx.BITMAP_TYPE_ANY).ConvertToBitmap()
-        imageCtrl = wx.StaticBitmap(self.image_pane, wx.ID_ANY,img,(0, 0),(img.GetWidth(), img.GetHeight())) 
-        self.image_pane.Hide()
-        self.image_pane.Show()
+        bitstream = ' bitstreams/'+filt_name+'.bin '
+        if filt_type == "s":
+            sw = " swcode/stream_filt.c "
+        else:
+            sw = " swcode/conv_filt.c "
+        command = 'scripts\client.exe 192.168.1.7 '+bitstream+sw+self.in_filename+' '+self.filt_filename
+        rtn = os.popen(command).readlines()
+        if len(rtn)==0:
+            img = wx.Image(self.filt_filename, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
+            imageCtrl = wx.StaticBitmap(self.image_pane, wx.ID_ANY,img,(0, 0),(img.GetWidth(), img.GetHeight())) 
+            self.image_pane.Hide()
+            self.image_pane.Show()
+        else:
+            print 'Something went wrong'
         
     def createToolBox(self):     
-        threshold = wx.BitmapButton(self.tool_pane, 1, wx.Bitmap('icons/thresholder.png'),(10,50))
-        invert = wx.BitmapButton(self.tool_pane, 2, wx.Bitmap('icons/inverter.jpeg'),(10,100))
-        slicer = wx.BitmapButton(self.tool_pane, 3, wx.Bitmap('icons/slicer.jpeg'),(10,150))       
-        self.Bind(wx.EVT_BUTTON,lambda event: self.OnFilter(event,"thresholder","c"),threshold)
-        self.Bind(wx.EVT_BUTTON,lambda event: self.OnFilter(event,"inverter","c"),invert)
-        self.Bind(wx.EVT_BUTTON,lambda event: self.OnFilter(event,"slicer","c"),slicer)
+        tfilt = wx.BitmapButton(self.tool_pane, 1, wx.Bitmap('icons/thresholder.png'),(0,50))
+        ifilt = wx.BitmapButton(self.tool_pane, 2, wx.Bitmap('icons/inverter.jpeg'),(0,100))
+        rfilt = wx.BitmapButton(self.tool_pane, 3, wx.Bitmap('icons/slicer.jpeg'),(0,150)) 
+        lfilt = wx.BitmapButton(self.tool_pane, 4, wx.Bitmap('icons/laplace.gif'),(0,200)) 
+        gfilt = wx.BitmapButton(self.tool_pane, 5, wx.Bitmap('icons/gaussian.png'),(0,260))
+        sfilt = wx.BitmapButton(self.tool_pane, 6, wx.Bitmap('icons/sobel.png'),(0,310))
+        bfilt = wx.BitmapButton(self.tool_pane, 7, wx.Bitmap('icons/box.jpeg'),(0,360))
+        efilt = wx.BitmapButton(self.tool_pane, 8, wx.Bitmap('icons/emboss.jpeg'),(0,410))
+      
+        self.Bind(wx.EVT_BUTTON,lambda event: self.OnFilter(event,"thresholder","s"),tfilt)
+        self.Bind(wx.EVT_BUTTON,lambda event: self.OnFilter(event,"inverter","s"),ifilt)
+        self.Bind(wx.EVT_BUTTON,lambda event: self.OnFilter(event,"slicer","s"),rfilt)
+        self.Bind(wx.EVT_BUTTON,lambda event: self.OnFilter(event,"laplace","c"),lfilt)
+        self.Bind(wx.EVT_BUTTON,lambda event: self.OnFilter(event,"gaussian","c"),gfilt)
+        self.Bind(wx.EVT_BUTTON,lambda event: self.OnFilter(event,"sobel","c"),sfilt)
+        self.Bind(wx.EVT_BUTTON,lambda event: self.OnFilter(event,"box","c"),bfilt)
+        self.Bind(wx.EVT_BUTTON,lambda event: self.OnFilter(event,"emboss","c"),efilt)
         
         
 class PRestoAbout(wx.Dialog):
