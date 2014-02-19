@@ -109,7 +109,7 @@ class PrestoFrame(wx.Frame):
             if filename:
                 try:
                     with open(filename):
-                        shutil.copyfile(self.filt_filename,filename) #need to change here.
+                        shutil.copyfile("receivedata.bmp",filename) #need to change here.
                 except:
                     self.OnSaveAs(event)  
         else:
@@ -144,15 +144,15 @@ class PrestoFrame(wx.Frame):
             sw = " swcode/stream_filt.c "
         else:
             sw = " swcode/conv_filt.c "
-        command = 'scripts\client.exe 192.168.1.7 '+bitstream+sw+self.in_filename+' '+self.filt_filename
+        command = 'scripts\client.exe 172.21.72.135 '+bitstream+sw+self.in_filename+' '+"receivedata.bmp"
         rtn = os.popen(command).readlines()
-        if len(rtn)==0:
-            img = wx.Image(self.filt_filename, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
-            imageCtrl = wx.StaticBitmap(self.image_pane, wx.ID_ANY,img,(0, 0),(img.GetWidth(), img.GetHeight())) 
-            self.image_pane.Hide()
-            self.image_pane.Show()
-        else:
-            print 'Something went wrong'
+        #if len(rtn)==0:
+        img = wx.Image("receivedata.bmp", wx.BITMAP_TYPE_ANY).ConvertToBitmap()
+        imageCtrl = wx.StaticBitmap(self.image_pane, wx.ID_ANY,img,(0, 0),(img.GetWidth(), img.GetHeight())) 
+        self.image_pane.Hide()
+        self.image_pane.Show()
+        #else:
+        #    print 'Something went wrong'
         
     def createToolBox(self):     
         tfilt = wx.BitmapButton(self.tool_pane, 1, wx.Bitmap('icons/thresholder.png'),(0,50))
